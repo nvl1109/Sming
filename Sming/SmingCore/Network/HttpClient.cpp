@@ -180,7 +180,7 @@ void HttpClient::parseHeaders(pbuf* buf, int headerEnd)
 							nextLine - (delim + 1));
 					value.trim();
 					responseHeaders[name] = value;
-					debugf("%s === %s", name.c_str(), value.c_str());
+					// debugf("%s === %s", name.c_str(), value.c_str());
 				}
 			}
 		}

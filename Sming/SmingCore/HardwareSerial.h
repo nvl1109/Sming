@@ -30,6 +30,7 @@
 #include <inttypes.h>
 
 #include "Stream.h"
+#include "Delegate.h"
 
 #define SERIAL_TX_BUFFER_SIZE 256
 #define SERIAL_RX_BUFFER_SIZE 256
