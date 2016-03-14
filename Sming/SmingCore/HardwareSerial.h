@@ -73,6 +73,17 @@ class cbuf;
 
 struct uart_;
 typedef struct uart_ uart_t;
+// Delegate constructor usage: (&YourClass::method, this)
+typedef Delegate<void(Stream &source, char arrivedChar, uint16_t availableCharsCount)> StreamDataReceivedDelegate;
+
+class CommandExecutor;
+
+typedef struct
+{
+	StreamDataReceivedDelegate HWSDelegate;
+	bool useRxBuff;
+	CommandExecutor* commandExecutor = nullptr;
+} HWSerialMemberData;
 
 class HardwareSerial: public Stream {
     public:
@@ -119,7 +130,7 @@ class HardwareSerial: public Stream {
         }
 
         void commandProcessing(bool reqEnable);
-        //void setCallback(StreamDataReceivedDelegate reqCallback, bool useSerialRxBuffer = true);
+        void setCallback(StreamDataReceivedDelegate reqCallback, bool useSerialRxBuffer = true);
         void resetCallback();
 
 
@@ -134,6 +145,8 @@ class HardwareSerial: public Stream {
         cbuf* _tx_buffer;
         cbuf* _rx_buffer;
         bool _written;
+    private:
+        static HWSerialMemberData memberData[NUMBER_UARTS];
 };
 
 /**	@brief	Global instance of serial port UART0

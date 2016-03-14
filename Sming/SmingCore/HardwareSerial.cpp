@@ -484,6 +484,7 @@ int uart_get_debug() {
 // ####################################################################################################
 // ####################################################################################################
 
+HWSerialMemberData HardwareSerial::memberData[NUMBER_UARTS];
 HardwareSerial::HardwareSerial(int uart_nr) :
         _uart_nr(uart_nr), _uart(0), _tx_buffer(0), _rx_buffer(0), _written(false) {
 }
@@ -576,7 +577,7 @@ int HardwareSerial::peek(void) {
 
     if(_uart != 0 && _uart->rxEnabled) {
         ret = _rx_buffer->peek();
-    } 
+    }
     interrupts();
     return ret;
 }
@@ -586,7 +587,7 @@ int HardwareSerial::read(void) {
     noInterrupts();
     if(_uart != 0 && _uart->rxEnabled) {
         c = _rx_buffer->read();
-    } 
+    }
     interrupts();
     return c;
 }
@@ -656,6 +657,12 @@ size_t HardwareSerial::write(uint8_t c) {
     return 1;
 }
 
+void HardwareSerial::setCallback(StreamDataReceivedDelegate reqDelegate, bool useSerialRxBuffer /* = true */)
+{
+	memberData[0].HWSDelegate = reqDelegate;
+	memberData[0].useRxBuff = useSerialRxBuffer;
+}
+
 HardwareSerial::operator bool() const {
     return _uart != 0;
 }
@@ -663,6 +670,10 @@ HardwareSerial::operator bool() const {
 void HardwareSerial::_rx_complete_irq(char c) {
     if(_rx_buffer) {
         _rx_buffer->write(c);
+        if (memberData[UART_ID_0].HWSDelegate)
+        {
+            memberData[UART_ID_0].HWSDelegate(Serial, c, _rx_buffer->getSize());
+        }
     }
 }
 
