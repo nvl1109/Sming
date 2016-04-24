@@ -7,6 +7,18 @@
 #############################################################
 
 ### Defaults ###
+# Custom options
+SSH_PORT         ?= 22
+SSH_URL          ?= pi@192.168.1.198
+# SSH_URL          ?= ubuntu@52.196.161.74
+# PRV_KEY          ?= /d/data/gerrit-1.pem
+SSH_DEST_DIR     ?= /opt/tmp/
+
+ifneq ($(PRV_KEY),)
+SCP_CMD          ?= -P $(SSH_PORT) -i $(PRV_KEY)
+else
+SCP_CMD          ?= -P $(SSH_PORT)
+endif
 
 # rBoot options, overwrite them in the projects Makefile-user.mk
 RBOOT_BIG_FLASH  ?= 1
@@ -53,32 +65,41 @@ SPI_SIZE ?= 512K
 
 ## SMING_HOME sets the path where Sming framework is located.
 ## Windows:
-# SMING_HOME = c:/tools/sming/Sming 
+# SMING_HOME = c:/tools/sming/Sming
 
 # MacOS / Linux
 # SMING_HOME = /opt/esp-open-sdk
 
 ## COM port parameter is reqruied to flash firmware correctly.
-## Windows: 
+## Windows:
 # COM_PORT = COM3
 
 # MacOS / Linux:
 # COM_PORT = /dev/tty.usbserial
 
 ifeq ($(OS),Windows_NT)
-  # Windows detected
-  UNAME := Windows
-  
+  # Linux Detected
+  UNAME := Linux
+
   # Default SMING_HOME. Can be overriden.
-  SMING_HOME ?= c:\tools\Sming\Sming
+  SMING_HOME ?= /opt/sming/Sming
 
   # Default ESP_HOME. Can be overriden.
-  ESP_HOME ?= c:\Espressif
+  ESP_HOME ?= /opt/esp-open-sdk
+  include $(SMING_HOME)/Makefile-linux.mk
+  # # Windows detected
+  # UNAME := Windows
 
-  # Making proper path adjustments - replace back slashes, remove colon and add forward slash.
-  SMING_HOME := $(subst \,/,$(addprefix /,$(subst :,,$(SMING_HOME))))
-  ESP_HOME := $(subst \,/,$(addprefix /,$(subst :,,$(ESP_HOME))))
-  include $(SMING_HOME)/Makefile-windows.mk  
+  # # Default SMING_HOME. Can be overriden.
+  # SMING_HOME ?= c:\tools\Sming\Sming
+
+  # # Default ESP_HOME. Can be overriden.
+  # ESP_HOME ?= c:\Espressif
+
+  # # Making proper path adjustments - replace back slashes, remove colon and add forward slash.
+  # SMING_HOME := $(subst \,/,$(addprefix /,$(subst :,,$(SMING_HOME))))
+  # ESP_HOME := $(subst \,/,$(addprefix /,$(subst :,,$(ESP_HOME))))
+  # include $(SMING_HOME)/Makefile-windows.mk
 else
   UNAME := $(shell uname -s)
   ifeq ($(UNAME),Darwin)
@@ -91,7 +112,7 @@ else
       # Default ESP_HOME. Can be overriden.
       ESP_HOME ?= /opt/esp-open-sdk
 
-      include $(SMING_HOME)/Makefile-macos.mk      
+      include $(SMING_HOME)/Makefile-macos.mk
   endif
   ifeq ($(UNAME),Linux)
       # Linux Detected
@@ -102,7 +123,7 @@ else
 
       # Default ESP_HOME. Can be overriden.
       ESP_HOME ?= /opt/esp-open-sdk
-      include $(SMING_HOME)/Makefile-linux.mk     
+      include $(SMING_HOME)/Makefile-linux.mk
   endif
   ifeq ($(UNAME),FreeBSD)
       # Freebsd Detected
@@ -113,7 +134,7 @@ else
 
       # Default ESP_HOME. Can be overriden.
       ESP_HOME ?= /usr/local/esp8266/esp-open-sdk
-      include $(SMING_HOME)/Makefile-bsd.mk     
+      include $(SMING_HOME)/Makefile-bsd.mk
   endif
 endif
 
@@ -303,9 +324,9 @@ vpath %.cpp $(SRC_DIR)
 define compile-objects
 $1/%.o: %.c
 	$(vecho) "CC $$<"
-	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS) -c $$< -o $$@	
+	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS) -c $$< -o $$@
 $1/%.o: %.cpp
-	$(vecho) "C+ $$<" 
+	$(vecho) "C+ $$<"
 	$(Q) $(CXX) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CXXFLAGS) -c $$< -o $$@
 endef
 
@@ -350,7 +371,7 @@ $(BUILD_DIR):
 $(FW_BASE):
 	$(Q) mkdir -p $@
 
-spiff_clean: 
+spiff_clean:
 	$(vecho) "Cleaning $(SPIFF_BIN_OUT)"
 	$(Q) rm -rf $(SPIFF_BIN_OUT)
 
@@ -362,7 +383,8 @@ else
 	$(vecho) "Checking for spiffs files"
 	$(Q) if [ -d "$(SPIFF_FILES)" ]; then \
 		echo "$(SPIFF_FILES) directory exists. Creating $(SPIFF_BIN_OUT)"; \
-		$(SPIFFY) $(SPIFF_SIZE) $(SPIFF_FILES) $(SPIFF_BIN_OUT); \
+		echo "$(SPIFFY) $(SPIFF_SIZE) $(SPIFF_FILES) $(SPIFF_BIN_OUT)"; \
+		$(SPIFFY) $(SPIFF_SIZE) $(SPIFF_FILES) && mv spiff_rom.bin $(SPIFF_BIN_OUT); \
 	else \
 		echo "No files found in ./$(SPIFF_FILES)."; \
 		echo "Creating empty $(SPIFF_BIN_OUT)"; \
@@ -374,17 +396,42 @@ flash: all
 	$(vecho) "Killing Terminal to free $(COM_PORT)"
 	-$(Q) $(KILL_TERM)
 ifeq ($(DISABLE_SPIFFS), 1)
-# flashes rboot and first rom
+	# flashes rboot and first rom
 	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0)
 else
-# flashes rboot, first rom and spiffs
+	# flashes rboot, first rom and spiffs
 	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0) $(RBOOT_SPIFFS_0) $(SPIFF_BIN_OUT)
 endif
 	$(TERMINAL)
 
+flashonly: all
+	$(vecho) "Killing Terminal to free $(COM_PORT)"
+	-$(Q) $(KILL_TERM)
+ifeq ($(DISABLE_SPIFFS), 1)
+	# flashes rboot and first rom
+	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0)
+else
+	# flashes rboot, first rom and spiffs
+	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0) $(RBOOT_SPIFFS_0) $(SPIFF_BIN_OUT)
+endif
+
+flashapp: all
+	$(vecho) "Killing Terminal to free $(COM_PORT)"
+	-$(Q) $(KILL_TERM)
+	# flashes rboot and first rom
+	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0)
+	$(TERMINAL)
+
+flashapponly: all
+	$(vecho) "Killing Terminal to free $(COM_PORT)"
+	-$(Q) $(KILL_TERM)
+	# flashes rboot and first rom
+	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0)
+
 terminal:
 	$(vecho) "Killing Terminal to free $(COM_PORT)"
 	-$(Q) $(KILL_TERM)
+	$(vecho) "Start Terminal on $(COM_PORT)"
 	$(TERMINAL)
 
 flashinit:
@@ -397,5 +444,31 @@ clean:
 #remove build artifacts
 	$(Q) rm -rf $(BUILD_BASE)
 	$(Q) rm -rf $(FW_BASE)
+
+upload: all
+	$(vecho) "Upload to $(SSH_URL)"
+	# flashes rboot and first rom
+	@scp $(SCP_CMD) $(RBOOT_ROM_0) $(SSH_URL):$(SSH_DEST_DIR)
+ifeq ($(RBOOT_TWO_ROMS), 1)
+	# flashes rboot and second rom
+	@scp $(SCP_CMD) $(RBOOT_ROM_1) $(SSH_URL):$(SSH_DEST_DIR)
+endif
+ifneq ($(DISABLE_SPIFFS), 1)
+	# flashes rboot, first rom and spiffs
+	@scp $(SCP_CMD) $(SPIFF_BIN_OUT) $(SSH_URL):$(SSH_DEST_DIR)
+endif
+
+uploadlocal: all
+	$(vecho) "Upload to /d/works/BBiQ/tmp"
+	# flashes rboot and first rom
+	@cp -f $(RBOOT_ROM_0) /d/works/BBiQ/tmp/
+ifeq ($(RBOOT_TWO_ROMS), 1)
+	# flashes rboot and second rom
+	@cp -f $(RBOOT_ROM_1) /d/works/BBiQ/tmp/
+endif
+ifneq ($(DISABLE_SPIFFS), 1)
+	# flashes rboot, first rom and spiffs]
+	@cp -f $(SPIFF_BIN_OUT) /d/works/BBiQ/tmp/
+endif
 
 $(foreach bdir,$(BUILD_DIR),$(eval $(call compile-objects,$(bdir))))

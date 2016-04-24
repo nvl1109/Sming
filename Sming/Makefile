@@ -17,13 +17,13 @@
 
 ## SMING_HOME sets the path where Sming framework is located.
 ## Windows:
-# SMING_HOME = c:/tools/sming/Sming 
+# SMING_HOME = c:/tools/sming/Sming
 
 # MacOS / Linux
 # SMING_HOME = /opt/esp-open-sdk
 
 ## COM port parameter is reqruied to flash firmware correctly.
-## Windows: 
+## Windows:
 # COM_PORT = COM3
 
 # MacOS / Linux:
@@ -34,19 +34,28 @@ COM_SPEED = 115200
 
 
 ifeq ($(OS),Windows_NT)
-  # Windows detected
-  UNAME := Windows
-  
-  # Default SMING_HOME. Can be overriden.
-  SMING_HOME ?= c:\tools\Sming\Sming
+   # Linux Detected
+   UNAME := Linux
 
-  # Default ESP_HOME. Can be overriden.
-  ESP_HOME ?= c:\Espressif
+   # Default SMING_HOME. Can be overriden.
+   SMING_HOME ?= /opt/sming/Sming
 
-  # Making proper path adjustments - replace back slashes, remove colon and add forward slash.
-  SMING_HOME := $(subst \,/,$(addprefix /,$(subst :,,$(SMING_HOME))))
-  ESP_HOME := $(subst \,/,$(addprefix /,$(subst :,,$(ESP_HOME))))
-  include Makefile-windows.mk  
+   # Default ESP_HOME. Can be overriden.
+   ESP_HOME ?= /opt/esp-open-sdk
+   include Makefile-linux.mk
+  # # Windows detected
+  # UNAME := Windows
+
+  # # Default SMING_HOME. Can be overriden.
+  # SMING_HOME ?= c:\tools\Sming\Sming
+
+  # # Default ESP_HOME. Can be overriden.
+  # ESP_HOME ?= c:\Espressif
+
+  # # Making proper path adjustments - replace back slashes, remove colon and add forward slash.
+  # SMING_HOME := $(subst \,/,$(addprefix /,$(subst :,,$(SMING_HOME))))
+  # ESP_HOME := $(subst \,/,$(addprefix /,$(subst :,,$(ESP_HOME))))
+  # include Makefile-windows.mk
 else
   UNAME := $(shell uname -s)
   ifeq ($(UNAME),Darwin)
@@ -59,7 +68,7 @@ else
       # Default ESP_HOME. Can be overriden.
       ESP_HOME ?= /opt/esp-open-sdk
 
-      include Makefile-macos.mk      
+      include Makefile-macos.mk
   endif
   ifeq ($(UNAME),Linux)
       # Linux Detected
@@ -70,7 +79,7 @@ else
 
       # Default ESP_HOME. Can be overriden.
       ESP_HOME ?= /opt/esp-open-sdk
-      include Makefile-linux.mk     
+      include Makefile-linux.mk
   endif
   ifeq ($(UNAME),FreeBSD)
       # Freebsd Detected
@@ -229,7 +238,7 @@ $(APP_AR): $(OBJ)
 	$(vecho) "AR $@"
 	$(Q) $(AR) cru $@ $^
 	$(vecho) "Installing libsming"
-	$(Q) cp -r $(APP_AR) $(USER_LIBDIR)/libsming.a  
+	$(Q) cp -r $(APP_AR) $(USER_LIBDIR)/libsming.a
 	$(vecho) "Done"
 
 ifeq ($(ENABLE_GDB), 1)	

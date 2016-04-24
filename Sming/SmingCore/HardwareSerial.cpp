@@ -148,6 +148,17 @@ int HardwareSerial::peek()
 
 void HardwareSerial::flush()
 {
+	// Change buf state to empty
+	UartDev.rcv_buff.BuffState = EMPTY;
+	UartDev.rcv_buff.pReadPos = UartDev.rcv_buff.pRcvMsgBuff;
+	UartDev.rcv_buff.pWritePos = UartDev.rcv_buff.pRcvMsgBuff;
+
+	// REset FIFOs
+	SET_PERI_REG_MASK(UART_CONF0(0), UART_TXFIFO_RST);//RESET TX FIFO
+	CLEAR_PERI_REG_MASK(UART_CONF0(0), UART_TXFIFO_RST);
+
+	SET_PERI_REG_MASK(UART_CONF0(0), UART_RXFIFO_RST);//RESET RX FIFO
+	CLEAR_PERI_REG_MASK(UART_CONF0(0), UART_RXFIFO_RST);
 }
 
 

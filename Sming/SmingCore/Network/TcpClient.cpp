@@ -196,6 +196,7 @@ err_t TcpClient::onSent(uint16_t len)
 
 void TcpClient::onError(err_t err)
 {
+	debugf("TcpClient onError with code %d", err);
 	state = eTCS_Failed;
 	onFinished(state);
 
@@ -211,8 +212,10 @@ void TcpClient::onFinished(TcpClientState finishState)
 	asyncTotalSent = 0;
 	asyncTotalLen = 0;
 
-	if (completed)
+	if (completed){
+		debugf("completed with state %d", state);
 		completed(*this, state == eTCS_Successful);
+	}
 }
 
 void TcpClient::setCompleteDelegate(TcpClientCompleteDelegate completeCb)
