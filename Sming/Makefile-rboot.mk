@@ -56,6 +56,20 @@ SPI_MODE ?= qio
 # SPI_SIZE: 512K, 256K, 1M, 2M, 4M
 SPI_SIZE ?= 512K
 
+SPIFF_FLASH_CMD ?=
+ifneq ("$(SPIFF_1_OUT)", "")
+SPIFF_FLASH_CMD += $(SPIFF_1_ADDR) $(FW_BASE)/$(SPIFF_1_OUT)
+endif
+ifneq ("$(SPIFF_2_OUT)", "")
+SPIFF_FLASH_CMD += $(SPIFF_2_ADDR) $(FW_BASE)/$(SPIFF_2_OUT)
+endif
+ifneq ("$(SPIFF_3_OUT)", "")
+SPIFF_FLASH_CMD += $(SPIFF_3_ADDR) $(FW_BASE)/$(SPIFF_3_OUT)
+endif
+ifneq ("$(SPIFF_4_OUT)", "")
+SPIFF_FLASH_CMD += $(SPIFF_4_ADDR) $(FW_BASE)/$(SPIFF_4_OUT)
+endif
+
 ## ESP_HOME sets the path where ESP tools and SDK are located.
 ## Windows:
 # ESP_HOME = c:/Espressif
@@ -330,9 +344,9 @@ $1/%.o: %.cpp
 	$(Q) $(CXX) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CXXFLAGS) -c $$< -o $$@
 endef
 
-.PHONY: all checkdirs spiff_update spiff_clean clean
+.PHONY: all checkdirs spiff_update spiff_clean clean spiff_make
 
-all: checkdirs $(LIBMAIN_DST) $(RBOOT_BIN) $(RBOOT_ROM_0) $(RBOOT_ROM_1) $(SPIFF_BIN_OUT) $(FW_FILE_1) $(FW_FILE_2)
+all: checkdirs $(LIBMAIN_DST) $(RBOOT_BIN) $(RBOOT_ROM_0) $(RBOOT_ROM_1) $(FW_FILE_1) $(FW_FILE_2) spiff_make
 
 $(RBOOT_BIN):
 	$(MAKE) -C $(SMING_HOME)/rboot
@@ -372,8 +386,49 @@ $(FW_BASE):
 	$(Q) mkdir -p $@
 
 spiff_clean:
-	$(vecho) "Cleaning $(SPIFF_BIN_OUT)"
-	$(Q) rm -rf $(SPIFF_BIN_OUT)
+ifneq ("$(SPIFF_1_OUT)", "")
+	$(vecho) "Cleaning $(SPIFF_1_OUT)"
+	$(Q) rm -rf $(FW_BASE)/$(SPIFF_1_OUT)
+endif
+ifneq ("$(SPIFF_2_OUT)", "")
+	$(vecho) "Cleaning $(SPIFF_2_OUT)"
+	$(Q) rm -rf $(FW_BASE)/$(SPIFF_2_OUT)
+endif
+ifneq ("$(SPIFF_3_OUT)", "")
+	$(vecho) "Cleaning $(SPIFF_3_OUT)"
+	$(Q) rm -rf $(FW_BASE)/$(SPIFF_3_OUT)
+endif
+ifneq ("$(SPIFF_4_OUT)", "")
+	$(vecho) "Cleaning $(SPIFF_4_OUT)"
+	$(Q) rm -rf $(FW_BASE)/$(SPIFF_4_OUT)
+endif
+
+ifneq ("$(SPIFF_1_OUT)", "")
+$(FW_BASE)/$(SPIFF_1_OUT):
+	$(vecho) "Making $(SPIFF_1_OUT)"
+	$(vecho) "$(SPIFFY) $(SPIFF_1_SIZE) $(SPIFF_1_FILES) $(FW_BASE)/$(SPIFF_1_OUT)"
+	$(Q) $(SPIFFY) $(SPIFF_1_SIZE) $(SPIFF_1_FILES) && mv spiff_rom.bin $(FW_BASE)/$(SPIFF_1_OUT);
+endif
+ifneq ("$(SPIFF_2_OUT)", "")
+$(FW_BASE)/$(SPIFF_2_OUT):
+	$(vecho) "Making $(SPIFF_2_OUT)"
+	$(vecho) "$(SPIFFY) $(SPIFF_2_SIZE) $(SPIFF_2_FILES) $(FW_BASE)/$(SPIFF_2_OUT)"
+	$(Q) $(SPIFFY) $(SPIFF_2_SIZE) $(SPIFF_2_FILES) && mv spiff_rom.bin $(FW_BASE)/$(SPIFF_2_OUT);
+endif
+ifneq ("$(SPIFF_3_OUT)", "")
+$(FW_BASE)/$(SPIFF_3_OUT):
+	$(vecho) "Making $(SPIFF_3_OUT)"
+	$(vecho) "$(SPIFFY) $(SPIFF_3_SIZE) $(SPIFF_3_FILES) $(FW_BASE)/$(SPIFF_3_OUT)"
+	$(Q) $(SPIFFY) $(SPIFF_3_SIZE) $(SPIFF_3_FILES) && mv spiff_rom.bin $(FW_BASE)/$(SPIFF_3_OUT);
+endif
+ifneq ("$(SPIFF_4_OUT)", "")
+$(FW_BASE)/$(SPIFF_4_OUT):
+	$(vecho) "Making $(SPIFF_4_OUT)"
+	$(vecho) "$(SPIFFY) $(SPIFF_4_SIZE) $(SPIFF_4_FILES) $(FW_BASE)/$(SPIFF_4_OUT)"
+	$(Q) $(SPIFFY) $(SPIFF_4_SIZE) $(SPIFF_4_FILES) && mv spiff_rom.bin $(FW_BASE)/$(SPIFF_4_OUT);
+endif
+
+spiff_make: $(FW_BASE)/$(SPIFF_1_OUT) $(FW_BASE)/$(SPIFF_2_OUT) $(FW_BASE)/$(SPIFF_3_OUT) $(FW_BASE)/$(SPIFF_4_OUT)
 
 $(SPIFF_BIN_OUT):
 ifeq ($(DISABLE_SPIFFS), 1)
@@ -400,8 +455,15 @@ ifeq ($(DISABLE_SPIFFS), 1)
 	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0)
 else
 	# flashes rboot, first rom and spiffs
-	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0) $(RBOOT_SPIFFS_0) $(SPIFF_BIN_OUT)
+	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0) $(SPIFF_FLASH_CMD)
 endif
+	$(TERMINAL)
+
+flashdataonly:
+	$(vecho) "Killing Terminal to free $(COM_PORT)"
+	-$(Q) $(KILL_TERM)
+	# flashes rboot, first rom and spiffs
+	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) $(SPIFF_FLASH_CMD)
 	$(TERMINAL)
 
 flashonly: all
@@ -412,7 +474,7 @@ ifeq ($(DISABLE_SPIFFS), 1)
 	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0)
 else
 	# flashes rboot, first rom and spiffs
-	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0) $(RBOOT_SPIFFS_0) $(SPIFF_BIN_OUT)
+	$(ESPTOOL) -p $(COM_PORT) -b $(COM_SPEED_ESPTOOL) write_flash $(flashimageoptions) 0x00000 $(RBOOT_BIN) 0x02000 $(RBOOT_ROM_0) $(SPIFF_FLASH_CMD)
 endif
 
 flashapp: all
